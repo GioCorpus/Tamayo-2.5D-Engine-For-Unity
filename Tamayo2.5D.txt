@@ -1,0 +1,254 @@
+# Tamayo 2.5D
+# CMake
+CMakeCache.txt
+CMakeFiles/
+*.cmake
+
+# Builds
+build/
+out/
+bin/
+*.exe
+*.dll
+
+# IDE
+.idea/
+*.sln
+*.vcxproj
+
+git init
+git add .
+git commit -m "Initial commit: README, LICENSE, .gitignore"
+git remote add origin https://github.com/tamayo2d/tamayo.git
+git push -u origin main
+
+tamayo/
+├── CMakeLists.txt
+├── src/
+│   ├── main.cpp
+│   └── vulkan_app.cpp
+│   └── vulkan_app.h
+├── external/          # Submodules or vendored deps (GLFW, Vulkan headers if needed)
+└── LICENSE
+
+cmake_minimum_required(VERSION 3.20)
+project(Tamayo25D LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+find_package(Vulkan REQUIRED)
+
+# GLFW as submodule (recommended for control)
+add_subdirectory(external/glfw)
+
+add_executable(tamayo
+    src/main.cpp
+    src/vulkan_app.cpp
+)
+
+target_include_directories(tamayo PRIVATE
+    ${Vulkan_INCLUDE_DIRS}
+    external/glfw/include
+)
+
+target_link_libraries(tamayo PRIVATE
+    Vulkan::Vulkan
+    glfw
+)
+
+# Optional: Enable Vulkan validation layers in debug
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    target_compile_definitions(tamayo PRIVATE VK_DEBUG)
+endif()
+
+git submodule add https://github.com/glfw/glfw external/glfw
+VULKAN_SDK
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release then cmake --build build
+
+#pragma once
+
+#include <vulkan/vulkan.h>
+#include <GLFW/glfw3.h>
+
+#include <vector>
+#include <stdexcept>
+#include <iostream>
+
+class VulkanApp {
+public:
+    VulkanApp();
+    ~VulkanApp();
+
+    void run();
+
+private:
+    void initWindow();
+    void initVulkan();
+    void createInstance();
+    void createSurface();
+    void pickPhysicalDevice();
+    void createLogicalDevice();
+    void createSwapChain();
+    void createImageViews();
+    void createRenderPass();          // Traditional; replace later with dynamic rendering
+    void createFramebuffers();
+    void createCommandPool();
+    void createCommandBuffers();
+    void createSyncObjects();
+
+    void mainLoop();
+    void drawFrame();
+    void cleanup();
+
+    // Helpers
+    VkResult createInstanceInternal();
+    bool checkValidationLayerSupport();
+    std::vector<const char*> getRequiredExtensions();
+
+    GLFWwindow* window = nullptr;
+    VkInstance instance = VK_NULL_HANDLE;
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    VkDevice device = VK_NULL_HANDLE;
+    VkQueue graphicsQueue = VK_NULL_HANDLE;
+    VkQueue presentQueue = VK_NULL_HANDLE;
+
+    VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+    std::vector<VkImage> swapChainImages;
+    VkFormat swapChainImageFormat;
+    VkExtent2D swapChainExtent;
+    std::vector<VkImageView> swapChainImageViews;
+
+    VkRenderPass renderPass = VK_NULL_HANDLE;
+    std::vector<VkFramebuffer> swapChainFramebuffers;
+
+    VkCommandPool commandPool = VK_NULL_HANDLE;
+    std::vector<VkCommandBuffer> commandBuffers;
+
+    std::vector<VkSemaphore> imageAvailableSemaphores;
+    std::vector<VkSemaphore> renderFinishedSemaphores;
+    std::vector<VkFence> inFlightFences;
+
+    const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+    uint32_t currentFrame = 0;
+
+#ifdef VK_DEBUG
+    VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        void* pUserData);
+#endif
+};
+
+#include "vulkan_app.h"
+
+VulkanApp::VulkanApp() {
+    initWindow();
+    initVulkan();
+}
+
+VulkanApp::~VulkanApp() {
+    cleanup();
+}
+
+void VulkanApp::initWindow() {
+    glfwInit();
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    window = glfwCreateWindow(1280, 720, "Tamayo 2.5D - Vulkan MVP", nullptr, nullptr);
+    if (!window) {
+        throw std::runtime_error("Failed to create GLFW window");
+    }
+}
+
+void VulkanApp::initVulkan() {
+    createInstance();
+    createSurface();
+    pickPhysicalDevice();
+    createLogicalDevice();
+    // Next steps: swap chain, render pass, etc.
+}
+
+void VulkanApp::createInstance() {
+    if (!checkValidationLayerSupport()) {
+        throw std::runtime_error("Validation layers requested but not available");
+    }
+
+    VkApplicationInfo appInfo{};
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName = "Tamayo 2.5D";
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.pEngineName = "No Engine";
+    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_3;  // Target 1.3 for dynamic rendering support
+
+    VkInstanceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo = &appInfo;
+
+    auto extensions = getRequiredExtensions();
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    createInfo.ppEnabledExtensionNames = extensions.data();
+
+#ifdef VK_DEBUG
+    const char* validationLayers[] = {"VK_LAYER_KHRONOS_validation"};
+    createInfo.enabledLayerCount = 1;
+    createInfo.ppEnabledLayerNames = validationLayers;
+#else
+    createInfo.enabledLayerCount = 0;
+#endif
+
+    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create Vulkan instance");
+    }
+}
+
+// ... Implement remaining helpers (checkValidationLayerSupport, getRequiredExtensions, etc.)
+
+void VulkanApp::run() {
+    mainLoop();
+}
+
+void VulkanApp::mainLoop() {
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+        // drawFrame();  // Implement later
+    }
+}
+
+void VulkanApp::cleanup() {
+    // Destroy in reverse order
+    if (instance != VK_NULL_HANDLE) {
+        vkDestroyInstance(instance, nullptr);
+    }
+    glfwDestroyWindow(window);
+    glfwTerminate();
+}
+
+#include "vulkan_app.h"
+#include <iostream>
+
+int main() {
+    try {
+        VulkanApp app;
+        app.run();
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+main
+
+dev
+
+VK_KHR_dynamic_rendering
+
+createSurface()
+
+glfwCreateWindowSurface
