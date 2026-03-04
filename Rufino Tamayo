@@ -1,0 +1,46 @@
+The full Tamayo 2.5D project scaffold is complete. Here's a summary of everything that was created:
+
+Project Structure (54 files)
+Build System
+CMakeLists.txt — Root CMake config with FetchContent for nlohmann/json, GLM, Catch2
+src/CMakeLists.txt — Builds tamayo_core library + tamayo executable
+tests/CMakeLists.txt — Catch2 test executable with auto-discovery
+Core Engine (include/tamayo/core/ + src/core/)
+types.h — Shared types: Color, Rect, BlendMode, InterpolationType, ID types
+Transform — Position (xyz), scale, rotation, alpha, anchor + matrix generation + lerp
+Keyframe — Frame index + transform + interpolation type + bezier handles
+Timeline — Sorted keyframe container with evaluate() supporting Linear, EaseIn/Out, Step, CubicBezier
+Layer — Name, visibility, z-depth, blend mode, image path, child hierarchy, timeline animation
+Scene — Canvas size, background color, layer management, depth sorting, playback state
+ParallaxEngine — Camera offset/zoom, depth-based layer offset/scale, configurable depth planes (3-5 layers)
+Renderer (include/tamayo/renderer/ + src/renderer/)
+DepthSorter — Z-depth sorting (back-to-front / front-to-back) with visibility filtering
+LightingSystem — Ambient + point lights with distance attenuation and depth-based falloff
+RenderContext — Builds ordered render command list integrating parallax + lighting
+Import/Export (include/tamayo/io/ + src/io/)
+PngImporter — Single file, sequence, and directory import with auto-detection
+SvgImporter — SVG file import with scale options
+JsonExporter — Full scene serialization to JSON (scene, layers, keyframes, transforms)
+WebGLExporter — Generates HTML + JS + JSON for browser-based 2.5D preview with WebGL shaders
+ProjectFile — Native .tamayo binary format (magic header + versioned JSON payload)
+Editor (include/tamayo/editor/ + src/editor/)
+EditorApp — Application lifecycle, scene management, playback control, export dispatch
+TimelinePanel — Frame/position mapping, zoom, scroll, layer selection
+LayerPanel — Layer selection with callbacks for visibility changes
+Viewport — Screen/world coordinate transforms, pan/zoom, parallax camera integration
+main.cpp — CLI entry point with --open, --export-json, --export-webgl, --version, --help
+Tests (8 test files, Catch2)
+test_transform.cpp — 7 test cases (construction, position, scale, rotation, alpha clamping, lerp, matrix)
+test_keyframe.cpp — 6 test cases (construction, frame, interpolation, bezier, ordering, equality)
+test_timeline.cpp — 12 test cases (add/remove/replace keyframes, sorting, linear interpolation, boundary evaluation, frame/time conversion, prev/next, clear)
+test_layer.cpp — 7 test cases (properties, image path, content size, transform with/without keyframes, child hierarchy)
+test_scene.cpp — 8 test cases (construction, layers, find/move/remove, depth sorting, frame clamping, background color)
+test_parallax.cpp — 6 test cases (camera offset, zoom, depth-varying offset/scale, apply_parallax, layer depth generation)
+test_depth_sorter.cpp — 4 test cases (back-to-front, front-to-back, visibility filtering, empty input)
+test_json_exporter.cpp — 6 test cases (empty scene, layers, transforms, keyframes, to_string, metadata toggle)
+Project Config
+LICENSE — Apache 2.0
+README.md — Project overview, architecture, build instructions, dependencies
+CONTRIBUTING.md — Contribution guide with code style and PR guidelines
+.gitignore — Build dirs, IDE files, compiled objects, CMake artifacts
+.clang-format — Code formatting configuration
